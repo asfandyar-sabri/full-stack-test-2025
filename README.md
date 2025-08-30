@@ -1,5 +1,9 @@
 # **Full-Stack Developer Test – ChatGPT Clone**
 
+This test is a part of our hiring process at TuringTech for [fullstack positions](https://turingtechnologies.org/careers). It should take you between 5-6 hours depending on your experience.
+
+Hope you will have as much fun as we did coding this test!
+
 ### **Objective**
 
 Build a simplified ChatGPT-like application with a **Next.js frontend** and a **backend of your choice** (**NestJS preferred**).
@@ -176,3 +180,10 @@ The goal of this test is to evaluate your ability to design and implement:
 - All API endpoints must be **authenticated and secure**
 
 ---
+
+## Code Submit
+Please organize, design, test and document your code as if it were going into production. Fork this repository and send us link to your repository. We will review it and get back to you in order to talk about your code!
+
+__Feel free to apply! Drop us a line with your Linkedin/Github/AnySocialProfileWhereYouAreActive at hr@turingtechnologies.org__
+
+All the best and happy coding.
