@@ -4,7 +4,7 @@ This test is a part of our hiring process at TuringTech for [fullstack positions
 
 Hope you will have as much fun as we did coding this test!
 
-### **Objective**
+## **Objective**
 
 Build a simplified ChatGPT-like application with a **Next.js frontend** and a **backend of your choice** (**NestJS preferred**).
 
@@ -17,7 +17,7 @@ The goal of this test is to evaluate your ability to design and implement:
 
 ---
 
-## **1. Authentication (Supabase Preferred)**
+### **1. Authentication (Supabase Preferred)**
 
 - **Option 1 – Supabase Auth (Preferred):**
 
