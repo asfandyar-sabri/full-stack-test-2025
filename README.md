@@ -4,7 +4,7 @@ This test is a part of our hiring process at TuringTech for [fullstack positions
 
 Hope you will have as much fun as we did coding this test!
 
-## **Objective**
+### **Objective**
 
 Build a simplified ChatGPT-like application with a **Next.js frontend** and a **backend of your choice** (**NestJS preferred**).
 
@@ -17,7 +17,7 @@ The goal of this test is to evaluate your ability to design and implement:
 
 ---
 
-### **1. Authentication (Supabase Preferred)**
+## **1. Authentication (Supabase Preferred)**
 
 - **Option 1 – Supabase Auth (Preferred):**
 
@@ -50,7 +50,7 @@ The goal of this test is to evaluate your ability to design and implement:
 - **Requirements:**
 
   - Follow the Figma designs exactly:
-    [Figma – UI Screens](https://www.figma.com/design/F8MOE9iC0BuonYs2iuI5Xb/UI-Screens?node-id=1-6098&t=SmatFFfefSSW9KVn-0)
+    [Figma – UI Screens](https://www.figma.com/design/nCJlqmFsnupB4yVeW2dtuS/Turing-Tech-Test?node-id=1-2&t=Fa8KJAfH1zGxYfaY-1)
   - Display chat history in the sidebar for the logged-in user
   - **All chat messages must be sent to and retrieved from the backend.**
 
