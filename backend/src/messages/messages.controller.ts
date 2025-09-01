@@ -21,39 +21,68 @@ export class MessagesController {
     return this.messages.listByChat(req.user.token, id);
   }
 
-  @Post()
-  async create(
-    @Param('id') id: string,
-    @Body() body: { content: string },
-    @Req() req: any
-  ) {
-    const user = req.user;
+  // @Post()
+  // async create(
+  //   @Param('id') id: string,
+  //   @Body() body: { content: string },
+  //   @Req() req: any
+  // ) {
+  //   const user = req.user;
 
-    // 1) insert user message
-    const userMsg = await this.messages.insert(user.token, {
-      chat_id: id,
-      user_id: user.id,
-      role: 'user',
-      content: body.content,
-    });
+  //   // 1) insert user message
+  //   const userMsg = await this.messages.insert(user.token, {
+  //     chat_id: id,
+  //     user_id: user.id,
+  //     role: 'user',
+  //     content: body.content,
+  //   });
 
-    // 2) deterministic assistant reply so UI ALWAYS has a response
-    const reply =
-      `Here is a multi-sentence simulated AI reply to: "${body.content}". ` +
-      `Imagine this came from a real LLM service. This delay helps you ` +
-      `demonstrate proper long-running request handling on the frontend.`;
+  //   // 2) deterministic assistant reply so UI ALWAYS has a response
+  //   const reply =
+  //     `Here is a multi-sentence simulated AI reply to: "${body.content}". ` +
+  //     `Imagine this came from a real LLM service. This delay helps you ` +
+  //     `demonstrate proper long-running request handling on the frontend.`;
 
-    const assistantMsg = await this.messages.insert(user.token, {
-      chat_id: id,
-      user_id: user.id,
-      role: 'assistant',
-      content: reply,
-    });
+  //   const assistantMsg = await this.messages.insert(user.token, {
+  //     chat_id: id,
+  //     user_id: user.id,
+  //     role: 'assistant',
+  //     content: reply,
+  //   });
 
-    return { user: userMsg, assistant: assistantMsg };
-  }
+  //   return { user: userMsg, assistant: assistantMsg };
+  // }
 
-  // (kept for later if you want live streaming)
+  // src/messages/messages.controller.ts
+@Post()
+async create(@Param('id') id: string, @Body() body: { content: string }, @Req() req: any) {
+  const user = req.user;
+
+  // 1) insert user message
+  const userMsg = await this.messages.insert(user.token, {
+    chat_id: id, user_id: user.id, role: 'user', content: body.content,
+  });
+
+  // --- NEW: random 10–20s delay (non-blocking for the server) ---
+  // const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+  // await sleep(rand(3_000, 8_000));
+  // ----------------------------------------------------------------
+
+  // 2) deterministic assistant reply
+  const reply =
+    `Here is a multi-sentence simulated AI reply to: "${body.content}". ` +
+    `Imagine this came from a real LLM service. This delay helps you ` +
+    `demonstrate proper long-running request handling on the frontend.`;
+
+  const assistantMsg = await this.messages.insert(user.token, {
+    chat_id: id, user_id: user.id, role: 'assistant', content: reply,
+  });
+
+  return { user: userMsg, assistant: assistantMsg };
+}
+
+
   @Sse('stream')
   stream(@Param('id') id: string, @Query('q') q: string): Observable<MessageEvent> {
     const text =
