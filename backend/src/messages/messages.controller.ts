@@ -1,42 +1,68 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+// src/messages/messages.controller.ts
+import {
+  Controller, Get, Post, Param, Body, Sse, Query,
+  UseGuards, MessageEvent, Req
+} from '@nestjs/common';
 import { SupabaseAuthGuard } from '../common/guards/supabase-auth.guard';
-import { ChatsService } from '../chats/chats.service';
-import { MessagesService } from './messages.service';
 import { LlmService } from '../llm/llm.service';
+import { MessagesService } from './messages.service';
+import { Observable, of, concat, map } from 'rxjs';
 
-@Controller('chats/:id/messages')
 @UseGuards(SupabaseAuthGuard)
+@Controller('/chats/:id/messages')
 export class MessagesController {
   constructor(
-    private readonly chats: ChatsService,
     private readonly messages: MessagesService,
-    private readonly llm: LlmService,
+    private readonly llm: LlmService
   ) {}
 
   @Get()
-  async list(@Req() req: any, @Param('id') chatId: string) {
-    await this.chats.assertOwner(req.user.token, chatId);
-    return this.messages.listByChat(req.user.token, chatId);
+  async list(@Param('id') id: string, @Req() req: any) {
+    return this.messages.listByChat(req.user.token, id);
   }
 
   @Post()
-  async send(@Req() req: any, @Param('id') chatId: string, @Body('content') content: string) {
-    const { id: userId, token } = req.user;
+  async create(
+    @Param('id') id: string,
+    @Body() body: { content: string },
+    @Req() req: any
+  ) {
+    const user = req.user;
 
-    // Verify ownership
-    await this.chats.assertOwner(token, chatId);
-
-    // Save user message
-    await this.messages.insert(token, { chat_id: chatId, user_id: userId, role: 'user', content });
-
-    // Simulate LLM 10–20s
-    const reply = await this.llm.getSimulatedReply(content);
-
-    // Save assistant message
-    const assistant = await this.messages.insert(token, {
-      chat_id: chatId, user_id: userId, role: 'assistant', content: reply,
+    // 1) insert user message
+    const userMsg = await this.messages.insert(user.token, {
+      chat_id: id,
+      user_id: user.id,
+      role: 'user',
+      content: body.content,
     });
 
-    return assistant;
+    // 2) deterministic assistant reply so UI ALWAYS has a response
+    const reply =
+      `Here is a multi-sentence simulated AI reply to: "${body.content}". ` +
+      `Imagine this came from a real LLM service. This delay helps you ` +
+      `demonstrate proper long-running request handling on the frontend.`;
+
+    const assistantMsg = await this.messages.insert(user.token, {
+      chat_id: id,
+      user_id: user.id,
+      role: 'assistant',
+      content: reply,
+    });
+
+    return { user: userMsg, assistant: assistantMsg };
+  }
+
+  // (kept for later if you want live streaming)
+  @Sse('stream')
+  stream(@Param('id') id: string, @Query('q') q: string): Observable<MessageEvent> {
+    const text =
+      'Here is a multi-sentence simulated AI reply. Imagine this came from a real LLM service. This streaming demo shows progressive delivery just like ChatGPT.';
+    const tokens = text.split(' ');
+    const pipe$ = this.llm.simulate(tokens).pipe(
+      map((token) => ({ data: { type: 'token', token } }))
+    );
+    const done$ = of({ data: { type: 'done' } });
+    return concat(pipe$, done$);
   }
 }
