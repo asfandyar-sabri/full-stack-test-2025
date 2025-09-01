@@ -1,6 +1,6 @@
 # Project Name
 
-A simple full-stack project with a Next.js (or Vite) frontend and a Node/NestJS backend.
+A simple full-stack project with a Next.js frontend and a NestJS backend.
 
 ## Prerequisites
 - **Node.js 18+** and **npm**
