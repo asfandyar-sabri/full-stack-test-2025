@@ -21,7 +21,8 @@ type AuthUser = {
 };
 type Chat = { id: string; title: string; created_at: string; user_id: string };
 
-export default function Sidebar() {
+// Accept `search` from the top bar (optional)
+export default function Sidebar({ search = "" }: { search?: string }) {
   const { data, isLoading } = useChats();
   const create = useCreateChat();
   const rename = useRenameChat();
@@ -70,6 +71,13 @@ export default function Sidebar() {
     await remove.mutateAsync(chat.id);
   };
 
+  // ---- Filter list using top-bar search ----
+  const q = search.trim().toLowerCase();
+  const list = q
+    ? chats.filter((c) => (c.title ?? "").toLowerCase().includes(q))
+    : chats;
+  // -----------------------------------------
+
   return (
     <aside
       className={[
@@ -98,12 +106,15 @@ export default function Sidebar() {
         {isLoading && (
           <div className="text-sm text-[var(--muted)] px-2">Loading…</div>
         )}
-        {!isLoading && chats.length === 0 && (
-          <div className="text-sm text-[var(--muted)] px-2">No chats yet.</div>
+
+        {!isLoading && list.length === 0 && (
+          <div className="text-sm text-[var(--muted)] px-2">
+            {q ? "No chats match your search." : "No chats yet."}
+          </div>
         )}
 
         {!isLoading &&
-          chats.map((chat) => {
+          list.map((chat) => {
             const active = pathname === `/chat/${chat.id}`;
             return (
               <div key={chat.id} className="group relative">
@@ -128,14 +139,14 @@ export default function Sidebar() {
                   {chat.title || "Untitled"}
                 </Link>
 
-                {/* Kebab menu on hover */}
+                {/* Kebab actions on hover */}
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onRename(chat);
                     }}
-                    className="text-[var(--muted)] text-xs px-2 py-0.5 rounded hover:bg-[var(--panel)]"
+                    className="cursor-pointer text-[var(--muted)] text-xs px-2 py-0.5 rounded hover:bg-[var(--panel)]"
                     title="Rename"
                   >
                     Rename
@@ -145,7 +156,7 @@ export default function Sidebar() {
                       e.stopPropagation();
                       onDelete(chat);
                     }}
-                    className="text-red-400 text-xs px-2 py-0.5 rounded hover:bg-[var(--panel)]"
+                    className="cursor-pointer text-red-400 text-xs px-2 py-0.5 rounded hover:bg-[var(--panel)]"
                     title="Delete"
                   >
                     Delete
