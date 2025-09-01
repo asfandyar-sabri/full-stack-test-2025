@@ -1,0 +1,45 @@
+
+# Node modules
+backend/node_modules/
+frontend/node_modules/
+
+backend/package-lock.json
+*/package-lock.json
+
+# Environment files
+backend/.env
+
+# Logs
+*.log
+logs/
+backend/logs/
+frontend/logs/
+
+# OS generated files
+Thumbs.db
+.DS_Store
+
+# VSCode settings
+.vscode/
+
+# Build output
+backend/dist/
+frontend/dist/
+
+# Coverage
+backend/coverage/
+frontend/coverage/
+
+# npm debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Jest
+backend/jest-*.json
+frontend/jest-*.json
+
+# Others
+backend/.env.*.local
+frontend/.env
+frontend/.env.*.local
