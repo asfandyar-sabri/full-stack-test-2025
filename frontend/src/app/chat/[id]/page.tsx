@@ -1,3 +1,4 @@
+// src/app/chat/[id]/page.tsx
 "use client";
 import RequireAuth from "@/components/RequireAuth";
 import { useMessages, useSendMessage } from "@/queries/chats";
@@ -20,6 +21,7 @@ function useTypewriter() {
     setRunning(true);
     for (let i = 0; i <= full.length; i++) {
       setText(full.slice(0, i));
+      // eslint-disable-next-line no-await-in-loop
       await new Promise((r) => setTimeout(r, speed));
     }
     setRunning(false);
@@ -43,7 +45,6 @@ function ChatDetailInner() {
 
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // always keep scrolled to bottom (newest at end)
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [data.length, thinking, typing, running]);
@@ -55,17 +56,26 @@ function ChatDetailInner() {
 
     setInput("");
     setThinking(true);
-    reset();
+    reset(); // clear any previous preview
 
     try {
       const res = await send.mutateAsync(prompt);
-      // animate the assistant we just created
       const assistantText = res?.assistant?.content as string | undefined;
-      if (assistantText) await run(assistantText);
+      if (assistantText) {
+        await run(assistantText); // show animated preview
+        reset(); // hide preview after animation
+      }
     } finally {
       setThinking(false);
     }
   };
+
+  // === Only one assistant bubble at a time ===
+  // If the preview is running and the latest message is from the assistant,
+  // hide that last server message (it's the same content being animated).
+  const hideLastAssistant =
+    running && data.length > 0 && data[data.length - 1].role === "assistant";
+  const visibleMessages = hideLastAssistant ? data.slice(0, -1) : data;
 
   return (
     <div className="h-[calc(100dvh-3rem)] grid grid-rows-[1fr_auto] overflow-hidden">
@@ -75,13 +85,16 @@ function ChatDetailInner() {
       >
         {isLoading && <div className="text-[var(--muted)]">Loading…</div>}
 
-        {!isLoading && data.length === 0 && !thinking && !running && (
-          <div className="text-[var(--muted)] text-sm">
-            No messages yet. Send one to start the conversation.
-          </div>
-        )}
+        {!isLoading &&
+          visibleMessages.length === 0 &&
+          !thinking &&
+          !running && (
+            <div className="text-[var(--muted)] text-sm">
+              No messages yet. Send one to start the conversation.
+            </div>
+          )}
 
-        {data.map((m, i) => {
+        {visibleMessages.map((m, i) => {
           const isUser = m.role === "user";
           return (
             <div
@@ -98,14 +111,16 @@ function ChatDetailInner() {
           );
         })}
 
-        {(running || typing) && (
+        {/* Preview bubble ONLY while running */}
+        {running && (
           <div className="max-w-[820px] rounded-2xl px-4 py-3 bg-[var(--bubble-assistant)] text-[var(--fg)]">
             {typing}
             <span className="animate-pulse">▍</span>
           </div>
         )}
 
-        {thinking && !running && !typing && (
+        {/* Brief placeholder before server text arrives */}
+        {thinking && !running && (
           <div className="max-w-[820px] rounded-2xl px-4 py-3 bg-[var(--bubble-assistant)] text-[var(--fg)] opacity-70">
             Thinking…
           </div>
