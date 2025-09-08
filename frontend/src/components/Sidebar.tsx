@@ -1,4 +1,3 @@
-// src/components/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -13,6 +12,7 @@ import {
 } from "@/queries/chats";
 import { useUi } from "@/stores/ui";
 import { supabase } from "@/lib/supabase-browser";
+import { ChevronLeft } from "lucide-react";
 
 type AuthUser = {
   name?: string | null;
@@ -21,14 +21,13 @@ type AuthUser = {
 };
 type Chat = { id: string; title: string; created_at: string; user_id: string };
 
-// Accept `search` from the top bar (optional)
 export default function Sidebar({ search = "" }: { search?: string }) {
   const { data, isLoading } = useChats();
   const create = useCreateChat();
   const rename = useRenameChat();
   const remove = useDeleteChat();
   const pathname = usePathname();
-  const { close } = useUi();
+  const { close, toggle, sidebarOpen } = useUi();
 
   const chats: Chat[] = useMemo(() => (data ?? []) as Chat[], [data]);
   const [me, setMe] = useState<AuthUser>({});
@@ -71,32 +70,50 @@ export default function Sidebar({ search = "" }: { search?: string }) {
     await remove.mutateAsync(chat.id);
   };
 
-  // ---- Filter list using top-bar search ----
   const q = search.trim().toLowerCase();
   const list = q
     ? chats.filter((c) => (c.title ?? "").toLowerCase().includes(q))
     : chats;
-  // -----------------------------------------
+
+  // Slide in/out on ALL breakpoints; never participates in layout flow
+  const slide = sidebarOpen ? "translate-x-0" : "-translate-x-full";
 
   return (
     <aside
       className={[
-        "z-40 bg-[var(--sidebar-bg)] border-r border-[var(--border)] w-64 shrink-0",
-        "h-[calc(100dvh-3rem)] p-4 space-y-4",
-        "fixed md:static top-12 md:top-0 left-0 transform md:transform-none transition-transform",
+        "fixed z-40 left-0 top-12", // below top bar
+        "w-64 h-[calc(100vh-3rem)]",
+        "bg-[var(--sidebar-bg)] border-r border-[var(--border)]",
+        "p-4 space-y-4",
+        "transform transition-transform duration-200",
+        slide,
         "flex flex-col overflow-hidden",
       ].join(" ")}
+      aria-hidden={!sidebarOpen}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          create.mutate("New Chat");
-        }}
-        className="cursor-pointer w-full py-2 rounded-xl bg-white text-black disabled:opacity-60"
-        disabled={create.isPending}
-      >
-        {create.isPending ? "Creating…" : "New chat"}
-      </button>
+      {/* Header row with collapse button */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            create.mutate("New Chat");
+          }}
+          className="cursor-pointer w-[calc(100%-2rem)] py-2 rounded-xl bg-white text-black disabled:opacity-60"
+          disabled={create.isPending}
+        >
+          {create.isPending ? "Creating…" : "New chat"}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggle}
+          className="ml-2 p-2 rounded hover:bg-[var(--panel)] text-[var(--muted)]"
+          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          aria-label="Collapse sidebar"
+        >
+          <ChevronLeft size={16} className={sidebarOpen ? "" : "rotate-180"} />
+        </button>
+      </div>
 
       <div className="pt-2 space-y-1 overflow-y-auto pr-1">
         <p className="text-xs uppercase tracking-wide text-[var(--muted)] px-2">
@@ -123,11 +140,7 @@ export default function Sidebar({ search = "" }: { search?: string }) {
                   prefetch={false}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (
-                      typeof window !== "undefined" &&
-                      window.innerWidth < 768
-                    )
-                      close();
+                    close(); // close after navigation on any viewport
                   }}
                   className={[
                     "cursor-pointer block px-3 py-2 rounded-lg text-sm",
@@ -139,7 +152,6 @@ export default function Sidebar({ search = "" }: { search?: string }) {
                   {chat.title || "Untitled"}
                 </Link>
 
-                {/* Kebab actions on hover */}
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
                   <button
                     onClick={(e) => {
@@ -167,7 +179,6 @@ export default function Sidebar({ search = "" }: { search?: string }) {
           })}
       </div>
 
-      {/* bottom user */}
       <div className="mt-auto pt-3 border-t border-[var(--border)]">
         <div className="flex items-center gap-3">
           <div className="relative w-8 h-8 rounded-full overflow-hidden bg-[#2a2a2a] flex-shrink-0">
