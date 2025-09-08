@@ -1,5 +1,7 @@
+// src/app/login/page.tsx
 "use client";
 
+import Link from "next/link";
 import { supabase } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,9 +39,7 @@ export default function LoginPage() {
     setErr(null);
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: window.location.origin + "/login",
-      },
+      options: { redirectTo: window.location.origin + "/login" },
     });
   };
 
@@ -50,12 +50,14 @@ export default function LoginPage() {
         className="w-full max-w-md bg-[#171717] rounded-xl p-6 shadow-xl border border-[#2a2a2a]"
       >
         <h1 className="text-xl mb-4 font-semibold">Login</h1>
+
         <input
           className="w-full mb-3 rounded-md bg-[#232323] px-3 py-2 outline-none"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
+
         <input
           type="password"
           className="w-full mb-4 rounded-md bg-[#232323] px-3 py-2 outline-none"
@@ -63,7 +65,9 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
         {err && <div className="text-red-400 text-sm mb-3">{err}</div>}
+
         <button
           type="submit"
           disabled={loading}
@@ -71,6 +75,7 @@ export default function LoginPage() {
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>
+
         <button
           type="button"
           onClick={signInGoogle}
@@ -78,6 +83,14 @@ export default function LoginPage() {
         >
           Continue with Google
         </button>
+
+        {/* NEW: signup link */}
+        <p className="text-sm text-neutral-400 mt-4">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="underline">
+            Sign up
+          </Link>
+        </p>
       </form>
     </div>
   );
