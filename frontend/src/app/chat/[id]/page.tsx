@@ -1,9 +1,10 @@
-// src/app/chat/[id]/page.tsx
 "use client";
 import RequireAuth from "@/components/RequireAuth";
 import { useMessages, useSendMessage } from "@/queries/chats";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { openSSE } from "@/lib/stream";
+import { supabase } from "@/lib/supabase-browser";
 
 export default function ChatDetail() {
   return (
@@ -11,22 +12,6 @@ export default function ChatDetail() {
       <ChatDetailInner />
     </RequireAuth>
   );
-}
-
-function useTypewriter() {
-  const [text, setText] = useState("");
-  const [running, setRunning] = useState(false);
-  const run = async (full: string, speed = 18) => {
-    setText("");
-    setRunning(true);
-    for (let i = 0; i <= full.length; i++) {
-      setText(full.slice(0, i));
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, speed));
-    }
-    setRunning(false);
-  };
-  return { text, running, run, reset: () => setText("") };
 }
 
 function ChatDetailInner() {
@@ -41,13 +26,24 @@ function ChatDetailInner() {
 
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const { text: typing, running, run, reset } = useTypewriter();
+
+  // Streaming preview state (fed by SSE)
+  const [streaming, setStreaming] = useState(false);
+  const [streamText, setStreamText] = useState("");
+
+  const stopStreamRef = useRef<null | (() => void)>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [data.length, thinking, typing, running]);
+  }, [data.length, thinking, streaming, streamText]);
+
+  // helper to stop any previous SSE
+  const stopStream = () => {
+    stopStreamRef.current?.();
+    stopStreamRef.current = null;
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,26 +52,53 @@ function ChatDetailInner() {
 
     setInput("");
     setThinking(true);
-    reset(); // clear any previous preview
+    setStreaming(false);
+    setStreamText("");
+    stopStream(); // ensure no previous stream is open
 
     try {
+      // 1) Persist both user + assistant rows (server returns them)
       const res = await send.mutateAsync(prompt);
-      const assistantText = res?.assistant?.content as string | undefined;
-      if (assistantText) {
-        await run(assistantText); // show animated preview
-        reset(); // hide preview after animation
-      }
+
+      // 2) Start SSE preview that streams the exact reply text (server-side simulated LLM)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+
+      const base = process.env.NEXT_PUBLIC_BACKEND_URL!;
+      // the backend stream route reads both q and access_token
+      const url =
+        `${base}/chats/${encodeURIComponent(id)}/messages/stream` +
+        `?q=${encodeURIComponent(prompt)}&access_token=${encodeURIComponent(
+          token
+        )}`;
+
+      setStreaming(true);
+      setStreamText("");
+
+      stopStreamRef.current = openSSE(
+        url,
+        (tok) => setStreamText((s) => (s ? s + " " : "") + tok),
+        () => {
+          // When streaming completes, hide the preview and keep only the server message
+          setStreaming(false);
+          setStreamText("");
+          stopStreamRef.current = null;
+        }
+      );
     } finally {
       setThinking(false);
     }
   };
 
-  // === Only one assistant bubble at a time ===
-  // If the preview is running and the latest message is from the assistant,
-  // hide that last server message (it's the same content being animated).
+  // While streaming, hide the latest assistant message (it’s the same content being streamed)
   const hideLastAssistant =
-    running && data.length > 0 && data[data.length - 1].role === "assistant";
+    streaming && data.length > 0 && data[data.length - 1].role === "assistant";
   const visibleMessages = hideLastAssistant ? data.slice(0, -1) : data;
+
+  // Clean up SSE on unmount or chat change
+  useEffect(() => stopStream, [id]);
 
   return (
     <div className="h-[calc(100dvh-3rem)] grid grid-rows-[1fr_auto] overflow-hidden">
@@ -88,7 +111,7 @@ function ChatDetailInner() {
         {!isLoading &&
           visibleMessages.length === 0 &&
           !thinking &&
-          !running && (
+          !streaming && (
             <div className="text-[var(--muted)] text-sm">
               No messages yet. Send one to start the conversation.
             </div>
@@ -111,16 +134,16 @@ function ChatDetailInner() {
           );
         })}
 
-        {/* Preview bubble ONLY while running */}
-        {running && (
+        {/* Streaming preview from SSE (one bubble while streaming) */}
+        {streaming && (
           <div className="max-w-[820px] rounded-2xl px-4 py-3 bg-[var(--bubble-assistant)] text-[var(--fg)]">
-            {typing}
+            {streamText}
             <span className="animate-pulse">▍</span>
           </div>
         )}
 
-        {/* Brief placeholder before server text arrives */}
-        {thinking && !running && (
+        {/* Brief placeholder before stream starts (optional) */}
+        {thinking && !streaming && (
           <div className="max-w-[820px] rounded-2xl px-4 py-3 bg-[var(--bubble-assistant)] text-[var(--fg)] opacity-70">
             Thinking…
           </div>
