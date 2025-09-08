@@ -7,7 +7,22 @@ import { useUi } from "@/stores/ui";
 import { Menu as MenuIcon, Moon, Search } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "@/app/providers";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+/** Tiny hook: keep a reliable mobile flag and avoid SSR/hydration flicker */
+function useIsMobile() {
+  const [ready, setReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    setReady(true);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+  return { ready, isMobile };
+}
 
 export default function ChatLayout({
   children,
@@ -20,22 +35,27 @@ export default function ChatLayout({
   const { theme, toggleTheme } = useTheme();
   const [filter, setFilter] = useState("");
 
+  const { ready, isMobile } = useIsMobile();
+
   // Open by default on desktop, closed on mobile
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 768px)");
-    const set = () => (mq.matches ? open() : close());
-    set();
-    mq.addEventListener?.("change", set);
-    return () => mq.removeEventListener?.("change", set);
-  }, [open, close]);
+    if (!ready) return;
+    if (isMobile) close();
+    else open();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, isMobile]);
+
+  // Desktop grid column widths
+  const gridCols = useMemo(
+    () => (sidebarOpen ? "16rem 1fr" : "0 1fr"),
+    [sidebarOpen]
+  );
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
       {/* Top bar */}
       <header className="h-12 border-b border-[var(--border)] flex items-center gap-3 px-3 md:px-4">
         <div className="flex items-center gap-2">
-          {/* Keep visible on all breakpoints so you can collapse on desktop too */}
           <button
             className="cursor-pointer p-2 rounded hover:bg-[var(--panel)]"
             onClick={toggle}
@@ -104,22 +124,31 @@ export default function ChatLayout({
         </div>
       </header>
 
-      {/* Content area (full-width). Sidebar is an overlay now. */}
-      <div className="relative h-[calc(100vh-3rem)] overflow-hidden">
-        {/* Overlay (click to close). Do not cover the top bar. */}
-        {sidebarOpen && (
+      {/* Content area. Desktop uses a grid; mobile is free layout with overlay drawer. */}
+      <div
+        className="relative h-[calc(100vh-3rem)] overflow-hidden md:grid"
+        style={{
+          gridTemplateColumns: gridCols,
+          transition: "grid-template-columns 200ms ease",
+        }}
+      >
+        {/* Mobile backdrop (render ONLY on mobile and after hydration) */}
+        {ready && isMobile && sidebarOpen && (
           <div
-            className="fixed left-0 right-0 top-12 bottom-0 bg-black/40"
+            className="fixed left-0 right-0 top-12 bottom-0 bg-black/40 z-40 md:hidden"
             onClick={close}
             aria-hidden
           />
         )}
 
-        {/* Overlay sidebar */}
+        {/* Sidebar — grid column on desktop, overlay drawer on mobile */}
         <Sidebar search={filter} />
 
-        {/* Main content never shifts */}
-        <main key={pathname} className="h-full overflow-hidden">
+        {/* Main content — always the second column on desktop */}
+        <main
+          key={pathname}
+          className="h-full overflow-hidden md:col-start-2 md:col-end-3"
+        >
           {children}
         </main>
       </div>
